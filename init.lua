@@ -36,7 +36,6 @@ require('packer').startup(function(use)
   use { "nvim-telescope/telescope-file-browser.nvim" }
   -- git and github integration
   use {
-    'tpope/vim-fugitive',
     'lewis6991/gitsigns.nvim',
   }
   use { 'TimUntersberger/neogit', requires = 'nvim-lua/plenary.nvim' }
@@ -49,7 +48,14 @@ require('packer').startup(function(use)
   -- lsp stuff
   use {
     'neovim/nvim-lspconfig',
-    'williamboman/nvim-lsp-installer',
+    requires = {
+      -- Automatically install LSPs to stdpath for neovim
+      'williamboman/mason.nvim',
+      'williamboman/mason-lspconfig.nvim',
+
+      -- Useful status updates for LSP
+      'j-hui/fidget.nvim',
+    },
   }
   -- debugging
   use 'mfussenegger/nvim-dap'
@@ -99,15 +105,25 @@ require('packer').startup(function(use)
   -- use "jamestthompson3/nvim-remote-containers"
   -- null-ls
   use 'jose-elias-alvarez/null-ls.nvim'
+  use {
+    "ahmedkhalf/project.nvim",
+    config = function()
+      require("project_nvim").setup {
+        -- your configuration comes here
+        -- or leave it empty to use the default settings
+        -- refer to the configuration section below
+      }
+    end
+  }
   if packer_bootstrap then
     require('packer').sync()
   end
 end)
 
 -- Fix tabs
-vim.opt.tabstop = 2
-vim.opt.softtabstop = 2
-vim.opt.shiftwidth = 2
+vim.opt.tabstop = 4
+vim.opt.softtabstop = 4
+vim.opt.shiftwidth = 4
 
 --Set highlight on search
 vim.o.hlsearch = true
@@ -145,7 +161,6 @@ vim.wo.signcolumn = 'yes'
 vim.o.termguicolors = true
 vim.cmd [[
 colorscheme gruvbox
-hi Normal guibg=NONE ctermbg=NONE
 ]]
 
 -- Set completeopt to have a better completion experience
@@ -157,37 +172,26 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 -- very useful mappings
 vim.cmd [[
-
 " nvim tree toggle
 nmap <leader>n <cmd>NvimTreeToggle<cr>
-
 " Undo tree toggle
 nmap <leader>u <cmd>UndotreeToggle<cr>
-
 " Shortcutting split navigation, saving a keypress:
 nmap <leader>w <C-w>
-
 " Spell-check set to <leader>o, 'o' for 'orthography':
 nmap <leader>o :setlocal spell! spelllang=en_us<CR>
-
-
 " These commands will navigate through buffers in order regardless of which mode you are using
 " e.g. if you change the order of buffers :bnext and :bprevious will not respect the custom ordering
 nnoremap <leader>] :bn<CR>
 nnoremap <leader>[ :bp<CR>
-
 nnoremap <silent><leader>d :bd<CR>
-
 " moving text
 vnoremap J :m '>+1<CR>gv=gv
 vnoremap K :m '<-2<CR>gv=gv
-
 " Lsp
 nnoremap <leader>lq :LspRestart<CR>
-
 " Terminal mode
 tnoremap <Esc> <C-\><C-n>
-
 ]]
 
 --Set statusbar
@@ -213,6 +217,7 @@ vim.cmd [[
 vim.cmd [[
   autocmd TermOpen * setlocal nonumber norelativenumber
 ]]
+
 
 -- Gitsigns
 require('gitsigns').setup{
@@ -256,14 +261,32 @@ require('gitsigns').setup{
   end
 }
 -- Telescope
-require('telescope').setup {}
+require('telescope').setup {
+  pickers = {
+    find_files = {
+      no_ignore = true,
+    },
+    buffers =  {
+      mappings = {
+        i = {
+          ["<C-d>"] = 'delete_buffer'
+        },
+        n = {
+          ["D"] = 'delete_buffer'
+        }
+
+      }
+    }
+
+  }
+}
+
 -- Enable telescope fzf native
 require('telescope').load_extension 'fzf'
 
 --Add leader shortcuts
 
 vim.cmd [[
-
 nnoremap <leader>ff <cmd>Telescope find_files <cr>
 nnoremap <leader><leader> <cmd>Telescope buffers <cr>
 nnoremap <leader>f/ <cmd>Telescope current_buffer_fuzzy_find    <cr>
@@ -273,16 +296,14 @@ nnoremap <leader>fd <cmd>Telescope grep_string  <cr>
 nnoremap <leader>fg <cmd>Telescope live_grep  <cr>
 nnoremap <leader>fo <cmd>Telescope oldfiles  <cr>
 nnoremap <leader>fr <cmd>lua require 'telescope'.extensions.file_browser.file_browser()  <cr>
-
 nnoremap <leader>fs <cmd>Telescope lsp_document_symbols <cr>
 nnoremap <leader>fw <cmd>Telescope lsp_workspace_symbols <cr>
-
 nnoremap <leader>gb <cmd>Telescope git_branches <cr>
 nnoremap <leader>gf <cmd>Telescope git_files <cr>
 nnoremap <leader>gt <cmd>Telescope git_stash <cr>
 nnoremap <leader>gs <cmd>Telescope git_status <cr>
 nnoremap <leader>gc <cmd>Telescope git_commits <cr>
-
+nnoremap <leader>pp <cmd>lua require'telescope'.extensions.projects.projects()  <cr>
 imap <silent><expr> <C-e> luasnip#expand_or_jumpable() ? '<Plug>luasnip-expand-or-jump' : '<Tab>' 
 ]]
 
@@ -296,10 +317,23 @@ require('nvim-treesitter.configs').setup {
   },
   indent = {
     enable = true,
-    disable = {"python"}
+    -- disable = {"python", "c"}
   },
 }
 
+require('telescope').load_extension('projects')
+
+require("nvim-tree").setup({
+  sync_root_with_cwd = true,
+  filters = {
+    dotfiles = false,
+  },
+  respect_buf_cwd = true,
+  update_focused_file = {
+    enable = true,
+    update_root = true
+  },
+})
 -- Diagnostic keymaps
 vim.api.nvim_set_keymap('n', '<leader>e', '<cmd>lua vim.diagnostic.open_float()<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '[e', '<cmd>lua vim.diagnostic.goto_prev()<CR>', { noremap = true, silent = true })
@@ -308,7 +342,6 @@ vim.api.nvim_set_keymap('n', '<leader>lq', '<cmd>lua vim.diagnostic.setloclist()
 
 -- LSP settings
 -- lsp install
-local lsp_installer = require'nvim-lsp-installer'
 
 local function on_attach(client, bufnr)
   vim.api.nvim_buf_set_option(bufnr, "omnifunc", "v:lua.vim.lsp.omnifunc")
@@ -335,34 +368,62 @@ local function on_attach(client, bufnr)
   buf_set_keymap('n', '<leader>lf', '<cmd>lua vim.lsp.buf.formatting()<CR>', opts)
 end
 
+
+-- Setup mason so it can manage external tooling
+require('mason').setup()
+
+-- Enable the following language servers
+-- Feel free to add/remove any LSPs that you want here. They will automatically be installed
+local servers = { 'clangd', 'rust_analyzer', 'pyright', 'tsserver', 'sumneko_lua', 'gopls' }
+
+-- Ensure the servers above are installed
+require('mason-lspconfig').setup {
+  ensure_installed = servers,
+}
+
 -- nvim-cmp supports additional completion capabilities
 local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities = require('cmp_nvim_lsp').update_capabilities(capabilities)
+capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
+-- Set completeopt to have a better completion experience
+vim.o.completeopt = 'menuone,noselect'
 
-
-local installed_servers = lsp_installer.get_installed_servers()
-for _, server in pairs(installed_servers) do
-  local opts = {
+for _, lsp in ipairs(servers) do
+  require('lspconfig')[lsp].setup {
     on_attach = on_attach,
     capabilities = capabilities,
   }
-  if server.name == "sumneko_lua" then
-    Lua = {
-      workspace = {
-        library = vim.api.nvim_get_runtime_file('', true),
-      },
-      telemetry = {
-        enable = false,
-      }
-    }
-  end
-
-  server:setup(opts)
 end
 
+-- Turn on status information
+require('fidget').setup()
 
--- Set completeopt to have a better completion experience
-vim.o.completeopt = 'menuone,noselect'
+-- Example custom configuration for lua
+--
+-- Make runtime files discoverable to the server
+local runtime_path = vim.split(package.path, ';')
+table.insert(runtime_path, 'lua/?.lua')
+table.insert(runtime_path, 'lua/?/init.lua')
+
+require('lspconfig').sumneko_lua.setup {
+  on_attach = on_attach,
+  capabilities = capabilities,
+  settings = {
+    Lua = {
+      runtime = {
+        -- Tell the language server which version of Lua you're using (most likely LuaJIT)
+        version = 'LuaJIT',
+        -- Setup your lua path
+        path = runtime_path,
+      },
+      diagnostics = {
+        globals = { 'vim' },
+      },
+      workspace = { library = vim.api.nvim_get_runtime_file('', true) },
+      -- Do not send telemetry data containing a randomized but unique identifier
+      telemetry = { enable = false },
+    },
+  },
+}
 
 -- luasnip setup
 -- Setup nvim-cmp.
@@ -401,17 +462,5 @@ require("null-ls").setup({
     require("null-ls").builtins.diagnostics.pydocstyle,
   },
 })
-
--- Vue js to spaces
-vim.api.nvim_create_autocmd("Filetype", {
-  pattern = "vue",
-  callback = function()
-    vim.opt.expandtab = true
-    vim.opt.tabstop = 2
-    vim.opt.softtabstop = 2
-    vim.opt.shiftwidth = 2
-  end,
-})
-
 
 -- vim: ts=2 sts=2 sw=2 et
